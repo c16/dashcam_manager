@@ -126,6 +126,15 @@ class ConnectionManager:
         """Disconnect from the dashcam."""
         logger.info("Disconnecting from dashcam")
         self.stop_monitoring()
+
+        # Restart recording when disconnecting
+        if self.api:
+            try:
+                logger.info("Restarting recording")
+                self.api.work_mode_cmd('start')
+            except Exception as e:
+                logger.warning(f"Failed to restart recording: {e}")
+
         self.api = None
         self.is_connected = False
         self._notify_status("Disconnected", False)
@@ -202,14 +211,6 @@ class ConnectionManager:
                             logger.info("Auto-reconnect successful")
                         else:
                             logger.error("Auto-reconnect failed")
-                else:
-                    # Keep recording stopped so files can be browsed
-                    # The dashcam auto-restarts recording periodically
-                    try:
-                        logger.debug("Ensuring recording stays stopped")
-                        self.api.work_mode_cmd('stop')
-                    except Exception as e:
-                        logger.warning(f"Failed to keep recording stopped: {e}")
 
             # Wait for next check or stop signal
             self._stop_monitoring.wait(interval)
