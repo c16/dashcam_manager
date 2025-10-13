@@ -4,7 +4,11 @@ gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gio, GLib
 import logging
 from threading import Thread
+from typing import List
 from src.services.connection_manager import ConnectionManager
+from src.services.cache_manager import CacheManager
+from src.ui.video_grid import VideoGrid
+from src.api.models import VideoFile
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +40,13 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_title("Dashcam Manager")
         self.set_default_size(1200, 800)
 
-        # Initialize connection manager
+        # Initialize managers
         self.connection_manager = ConnectionManager(on_status_change=self.on_connection_status_changed)
+        self.cache_manager = CacheManager()
+
+        # Current state
+        self.current_directory = None
+        self.current_videos: List[VideoFile] = []
 
         logger.info("Initializing main window")
         self.setup_ui()
@@ -153,31 +162,74 @@ class MainWindow(Gtk.ApplicationWindow):
             button.connect("clicked", self.on_directory_selected, dir_name)
             box.append(button)
 
+        # Separator
+        separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        separator.set_margin_top(12)
+        separator.set_margin_bottom(12)
+        box.append(separator)
+
+        # Filter section
+        filter_title = Gtk.Label(label="Filters")
+        filter_title.add_css_class("heading")
+        filter_title.set_xalign(0)
+        box.append(filter_title)
+
+        # Camera filter
+        camera_label = Gtk.Label(label="Camera")
+        camera_label.set_xalign(0)
+        camera_label.add_css_class("caption")
+        box.append(camera_label)
+
+        camera_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.filter_front = Gtk.CheckButton(label="Front")
+        self.filter_front.set_active(True)
+        self.filter_front.connect("toggled", self._on_filter_changed)
+        camera_box.append(self.filter_front)
+
+        self.filter_back = Gtk.CheckButton(label="Back")
+        self.filter_back.set_active(True)
+        self.filter_back.connect("toggled", self._on_filter_changed)
+        camera_box.append(self.filter_back)
+        box.append(camera_box)
+
+        # Video type filter
+        type_label = Gtk.Label(label="Type")
+        type_label.set_xalign(0)
+        type_label.add_css_class("caption")
+        type_label.set_margin_top(6)
+        box.append(type_label)
+
+        self.filter_normal = Gtk.CheckButton(label="Normal")
+        self.filter_normal.set_active(True)
+        self.filter_normal.connect("toggled", self._on_filter_changed)
+        box.append(self.filter_normal)
+
+        self.filter_emergency = Gtk.CheckButton(label="Emergency")
+        self.filter_emergency.set_active(True)
+        self.filter_emergency.connect("toggled", self._on_filter_changed)
+        box.append(self.filter_emergency)
+
+        # Clear filters button
+        clear_btn = Gtk.Button(label="Reset Filters")
+        clear_btn.set_margin_top(12)
+        clear_btn.connect("clicked", self._on_clear_filters)
+        box.append(clear_btn)
+
         return frame
 
     def create_center_panel(self):
         """Create center panel for thumbnail grid."""
         frame = Gtk.Frame()
 
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        frame.set_child(scrolled)
+        # Create video grid
+        self.video_grid = VideoGrid(
+            cache_manager=self.cache_manager,
+            on_video_click=self.on_video_clicked
+        )
+        frame.set_child(self.video_grid)
 
-        # Placeholder for thumbnail grid
-        placeholder = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        placeholder.set_valign(Gtk.Align.CENTER)
-        placeholder.set_halign(Gtk.Align.CENTER)
-        scrolled.set_child(placeholder)
-
-        icon = Gtk.Image.new_from_icon_name("folder-videos-symbolic")
-        icon.set_pixel_size(64)
-        icon.add_css_class("dim-label")
-        placeholder.append(icon)
-
-        label = Gtk.Label(label="Connect to dashcam to view videos")
-        label.add_css_class("title-2")
-        label.add_css_class("dim-label")
-        placeholder.append(label)
+        # Show initial placeholder
+        self.video_grid.show_placeholder("Connect to dashcam to view videos")
 
         return frame
 
@@ -268,8 +320,31 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_directory_selected(self, button, dir_name):
         """Handle directory selection."""
         logger.info(f"Directory selected: {dir_name}")
-        self.status_label.set_label(f"Selected: {dir_name}")
-        # TODO: Implement directory browsing in Sprint 2
+
+        if not self.connection_manager.is_connected:
+            self.status_label.set_label("Not connected to dashcam")
+            return
+
+        # Map UI names to API directory names
+        dir_mapping = {
+            "Normal Videos": "norm",
+            "Emergency Videos": "emr",
+            "Parking Mode": "norm",  # Same as normal
+            "Back Camera": "back_norm",
+            "Back Emergency": "back_emr",
+            "Photos": "photo"
+        }
+
+        api_dir = dir_mapping.get(dir_name)
+        if not api_dir:
+            logger.warning(f"Unknown directory: {dir_name}")
+            return
+
+        self.current_directory = api_dir
+        self.status_label.set_label(f"Loading {dir_name}...")
+
+        # Load videos in background
+        Thread(target=self._load_directory_async, args=(api_dir,), daemon=True).start()
 
     def on_connection_status_changed(self, message: str, connected: bool):
         """Handle connection status changes from ConnectionManager.
@@ -308,8 +383,128 @@ class MainWindow(Gtk.ApplicationWindow):
         button.set_sensitive(True)
         if self.connection_manager.is_connected:
             button.set_label("Disconnect")
+            # Set API for video grid when connected
+            if self.connection_manager.api:
+                self.video_grid.set_api(self.connection_manager.api)
         else:
             button.set_label("Connect")
+
+    def _load_directory_async(self, directory: str) -> None:
+        """Load videos from directory in background thread.
+
+        Args:
+            directory: Directory name (e.g., "norm", "emr")
+        """
+        try:
+            api = self.connection_manager.api
+            if not api:
+                logger.error("No API client available")
+                GLib.idle_add(self.status_label.set_label, "Connection lost")
+                return
+
+            logger.info(f"Loading directory: {directory}")
+
+            # Get file list from API
+            file_paths = api.get_dir_file_list_parsed(directory, 0, 100)
+            logger.info(f"Found {len(file_paths)} files in {directory}")
+
+            # Parse into VideoFile objects
+            videos = []
+            for file_path in file_paths:
+                try:
+                    # Only process video files (.TS)
+                    if file_path.endswith('.TS'):
+                        video = VideoFile.from_filename(file_path)
+                        videos.append(video)
+                except Exception as e:
+                    logger.warning(f"Failed to parse file: {file_path}, {e}")
+
+            logger.info(f"Parsed {len(videos)} video files")
+            self.current_videos = videos
+
+            # Update UI on main thread
+            GLib.idle_add(self._update_video_grid, videos, directory)
+
+        except Exception as e:
+            logger.error(f"Failed to load directory: {e}", exc_info=True)
+            GLib.idle_add(self.status_label.set_label, f"Error loading directory: {str(e)}")
+            GLib.idle_add(self.video_grid.show_placeholder, "Failed to load videos")
+
+    def _update_video_grid(self, videos: List[VideoFile], directory: str) -> None:
+        """Update video grid with loaded videos (must be called on main thread).
+
+        Args:
+            videos: List of VideoFile instances
+            directory: Directory name
+        """
+        if videos:
+            self.video_grid.load_videos(videos)
+            self.status_label.set_label(f"Loaded {len(videos)} videos from {directory}")
+        else:
+            self.video_grid.show_placeholder(f"No videos found in {directory}")
+            self.status_label.set_label(f"No videos in {directory}")
+
+    def on_video_clicked(self, video_file: VideoFile) -> None:
+        """Handle video thumbnail click.
+
+        Args:
+            video_file: VideoFile that was clicked
+        """
+        logger.info(f"Video clicked: {video_file.filename}")
+        self.status_label.set_label(f"Selected: {video_file.filename}")
+        # TODO: Implement video playback or download in Sprint 3/4
+
+    def _on_filter_changed(self, checkbox) -> None:
+        """Handle filter checkbox change."""
+        logger.debug("Filter changed, reapplying filters")
+        self._apply_filters()
+
+    def _on_clear_filters(self, button) -> None:
+        """Reset all filters to default."""
+        logger.info("Clearing filters")
+        self.filter_front.set_active(True)
+        self.filter_back.set_active(True)
+        self.filter_normal.set_active(True)
+        self.filter_emergency.set_active(True)
+        self._apply_filters()
+
+    def _apply_filters(self) -> None:
+        """Apply current filters to video list."""
+        if not self.current_videos:
+            return
+
+        # Get filter states
+        show_front = self.filter_front.get_active()
+        show_back = self.filter_back.get_active()
+        show_normal = self.filter_normal.get_active()
+        show_emergency = self.filter_emergency.get_active()
+
+        # Filter videos
+        filtered_videos = []
+        for video in self.current_videos:
+            # Camera filter
+            if video.camera == "front" and not show_front:
+                continue
+            if video.camera == "back" and not show_back:
+                continue
+
+            # Type filter
+            if video.type == "normal" and not show_normal:
+                continue
+            if video.type == "emergency" and not show_emergency:
+                continue
+
+            filtered_videos.append(video)
+
+        logger.info(f"Filtered {len(self.current_videos)} videos to {len(filtered_videos)}")
+
+        # Update grid
+        if filtered_videos:
+            self.video_grid.load_videos(filtered_videos)
+            self.status_label.set_label(f"Showing {len(filtered_videos)} of {len(self.current_videos)} videos")
+        else:
+            self.video_grid.show_placeholder("No videos match current filters")
+            self.status_label.set_label("No videos match filters")
 
 
 def main():
