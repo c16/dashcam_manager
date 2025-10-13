@@ -4,6 +4,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('GdkPixbuf', '2.0')
 from gi.repository import Gtk, GdkPixbuf, GLib, Gio
 import logging
+import time
 from typing import List, Optional, Callable
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
@@ -228,6 +229,10 @@ class VideoGrid(Gtk.ScrolledWindow):
             logger.debug(f"Fetching thumbnail from API: {video_file.filename}")
             # Convert .TS video path to .THM thumbnail path
             thumbnail_path = video_file.path.replace('.TS', '.THM')
+
+            # Small delay to avoid overwhelming API with too many simultaneous requests
+            time.sleep(0.05)
+
             thumbnail_data = self.api.get_thumbnail(thumbnail_path)
 
             # Check one final time before updating UI
