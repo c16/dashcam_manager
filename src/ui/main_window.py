@@ -404,6 +404,14 @@ class MainWindow(Gtk.ApplicationWindow):
 
             logger.info(f"Loading directory: {directory}")
 
+            # Make sure recording is stopped before browsing files
+            # The dashcam might have auto-restarted recording
+            try:
+                logger.debug("Ensuring recording is stopped")
+                api.work_mode_cmd('stop')
+            except Exception as e:
+                logger.warning(f"Failed to stop recording: {e}")
+
             # Get file list from API
             file_paths = api.get_dir_file_list_parsed(directory, 0, 100)
             logger.info(f"Found {len(file_paths)} files in {directory}")
