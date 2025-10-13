@@ -210,11 +210,17 @@ class VideoGrid(Gtk.ScrolledWindow):
             # Check cache first
             cached_data = self.cache_manager.get_thumbnail(video_file.path)
             if cached_data:
-                logger.debug(f"Using cached thumbnail: {video_file.filename}")
-                # Check again before updating UI
-                if batch_id == self.loading_batch_id:
-                    GLib.idle_add(thumbnail.set_thumbnail_data, cached_data)
-                return
+                # Validate cached data is actually a JPEG
+                if len(cached_data) >= 2 and cached_data[:2] == b'\xff\xd8':
+                    logger.debug(f"Using cached thumbnail: {video_file.filename}")
+                    # Check again before updating UI
+                    if batch_id == self.loading_batch_id:
+                        GLib.idle_add(thumbnail.set_thumbnail_data, cached_data)
+                    return
+                else:
+                    # Invalid cached data - invalidate it
+                    logger.warning(f"Invalid cached thumbnail for {video_file.filename}, will re-fetch")
+                    self.cache_manager.invalidate(video_file.path)
 
             # Load from API if not cached
             if not self.api:
@@ -243,10 +249,16 @@ class VideoGrid(Gtk.ScrolledWindow):
             if thumbnail_data:
                 # Validate it's actually a JPEG (starts with FF D8)
                 if len(thumbnail_data) < 2 or thumbnail_data[:2] != b'\xff\xd8':
-                    logger.error(f"Invalid thumbnail data for {video_file.filename}: starts with {thumbnail_data[:10].hex() if len(thumbnail_data) >= 10 else 'empty'}")
+                    logger.error(f"Invalid thumbnail data for {video_file.filename} (path: {thumbnail_path})")
+                    logger.error(f"  Data starts with: {thumbnail_data[:20].hex() if len(thumbnail_data) >= 20 else 'empty'}")
+                    logger.error(f"  Data size: {len(thumbnail_data)} bytes")
                     # If it starts with <! it's likely an HTML error page
                     if thumbnail_data[:2] == b'<!':
-                        logger.error(f"API returned HTML error: {thumbnail_data[:200].decode('latin1', errors='ignore')}")
+                        logger.error(f"  API returned HTML error: {thumbnail_data[:200].decode('latin1', errors='ignore')}")
+                    # If it starts with G@ (0x47 0x40) it's a .TS video file
+                    elif thumbnail_data[:2] == b'G@':
+                        logger.error(f"  API returned video file instead of thumbnail!")
+                    # Don't cache invalid data
                     GLib.idle_add(thumbnail._show_error)
                     return
 
