@@ -128,6 +128,7 @@ class VideoGrid(Gtk.ScrolledWindow):
 
         # Thread pool for controlled thumbnail loading (max 5 concurrent downloads)
         self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="thumbnail-loader")
+        self.loading_batch_id = 0  # Track which batch of thumbnails we're loading
 
         # Flow box for grid layout
         self.flowbox = Gtk.FlowBox()
@@ -156,9 +157,9 @@ class VideoGrid(Gtk.ScrolledWindow):
 
     def clear(self) -> None:
         """Clear all thumbnails from grid."""
-        # Cancel any pending thumbnail loads by shutting down and recreating executor
-        self.executor.shutdown(wait=False, cancel_futures=True)
-        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="thumbnail-loader")
+        # Increment batch ID to invalidate any in-flight thumbnail loads
+        self.loading_batch_id += 1
+        logger.debug(f"Grid cleared, batch_id now {self.loading_batch_id}")
 
         # Remove all children
         child = self.flowbox.get_first_child()
@@ -168,7 +169,6 @@ class VideoGrid(Gtk.ScrolledWindow):
             child = next_child
 
         self.thumbnails.clear()
-        logger.debug("Grid cleared")
 
     def load_videos(self, video_files: List[VideoFile]) -> None:
         """Load video thumbnails into grid.
@@ -179,6 +179,9 @@ class VideoGrid(Gtk.ScrolledWindow):
         logger.info(f"Loading {len(video_files)} videos into grid")
         self.clear()
 
+        # Capture current batch ID for this load
+        current_batch_id = self.loading_batch_id
+
         for video_file in video_files:
             # Create thumbnail widget
             thumbnail = VideoThumbnail(video_file, on_click=self.on_video_click)
@@ -186,21 +189,29 @@ class VideoGrid(Gtk.ScrolledWindow):
             self.thumbnails.append(thumbnail)
 
             # Load thumbnail data using thread pool (limits concurrent downloads)
-            self.executor.submit(self._load_thumbnail_async, thumbnail, video_file)
+            self.executor.submit(self._load_thumbnail_async, thumbnail, video_file, current_batch_id)
 
-    def _load_thumbnail_async(self, thumbnail: VideoThumbnail, video_file: VideoFile) -> None:
+    def _load_thumbnail_async(self, thumbnail: VideoThumbnail, video_file: VideoFile, batch_id: int) -> None:
         """Load thumbnail data asynchronously.
 
         Args:
             thumbnail: VideoThumbnail widget
             video_file: VideoFile instance
+            batch_id: Batch ID when this load was initiated
         """
         try:
+            # Check if this batch is still active (not cancelled by a new load)
+            if batch_id != self.loading_batch_id:
+                logger.debug(f"Skipping outdated thumbnail load for {video_file.filename} (batch {batch_id} != {self.loading_batch_id})")
+                return
+
             # Check cache first
             cached_data = self.cache_manager.get_thumbnail(video_file.path)
             if cached_data:
                 logger.debug(f"Using cached thumbnail: {video_file.filename}")
-                GLib.idle_add(thumbnail.set_thumbnail_data, cached_data)
+                # Check again before updating UI
+                if batch_id == self.loading_batch_id:
+                    GLib.idle_add(thumbnail.set_thumbnail_data, cached_data)
                 return
 
             # Load from API if not cached
@@ -208,10 +219,20 @@ class VideoGrid(Gtk.ScrolledWindow):
                 logger.warning("No API client set, cannot load thumbnails")
                 return
 
+            # Check again before making API call
+            if batch_id != self.loading_batch_id:
+                logger.debug(f"Batch cancelled before API call for {video_file.filename}")
+                return
+
             logger.debug(f"Fetching thumbnail from API: {video_file.filename}")
             # Convert .TS video path to .THM thumbnail path
             thumbnail_path = video_file.path.replace('.TS', '.THM')
             thumbnail_data = self.api.get_thumbnail(thumbnail_path)
+
+            # Check one final time before updating UI
+            if batch_id != self.loading_batch_id:
+                logger.debug(f"Batch cancelled after API call for {video_file.filename}")
+                return
 
             if thumbnail_data:
                 # Cache the thumbnail
@@ -225,7 +246,8 @@ class VideoGrid(Gtk.ScrolledWindow):
 
         except Exception as e:
             logger.error(f"Failed to load thumbnail for {video_file.filename}: {e}")
-            GLib.idle_add(thumbnail._show_error)
+            if batch_id == self.loading_batch_id:
+                GLib.idle_add(thumbnail._show_error)
 
     def show_placeholder(self, message: str = "No videos to display") -> None:
         """Show placeholder message when grid is empty.
