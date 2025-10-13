@@ -35,7 +35,8 @@ class VideoFile:
         filename = path.split('/')[-1]
 
         # Parse timestamp from filename
-        pattern = r'(\d{4})_(\d{2})_(\d{2})_(\d{6})_\d{2}\.(TS|THM|TXT)'
+        # Handle both normal (YYYY_MM_DD_HHMMSS_XX.TS) and back camera (_b.TS) formats
+        pattern = r'(\d{4})_(\d{2})_(\d{2})_(\d{6})_\d{2}(_b)?\.(TS|THM|TXT)'
         match = re.match(pattern, filename)
 
         if not match:

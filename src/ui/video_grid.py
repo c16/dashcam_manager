@@ -6,6 +6,7 @@ from gi.repository import Gtk, GdkPixbuf, GLib, Gio
 import logging
 from typing import List, Optional, Callable
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from src.api.models import VideoFile
 from src.services.cache_manager import CacheManager
@@ -125,6 +126,9 @@ class VideoGrid(Gtk.ScrolledWindow):
         self.api = None  # Set by caller
         self.thumbnails: List[VideoThumbnail] = []
 
+        # Thread pool for controlled thumbnail loading (max 5 concurrent downloads)
+        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="thumbnail-loader")
+
         # Flow box for grid layout
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -152,6 +156,10 @@ class VideoGrid(Gtk.ScrolledWindow):
 
     def clear(self) -> None:
         """Clear all thumbnails from grid."""
+        # Cancel any pending thumbnail loads by shutting down and recreating executor
+        self.executor.shutdown(wait=False, cancel_futures=True)
+        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="thumbnail-loader")
+
         # Remove all children
         child = self.flowbox.get_first_child()
         while child:
@@ -177,12 +185,8 @@ class VideoGrid(Gtk.ScrolledWindow):
             self.flowbox.append(thumbnail)
             self.thumbnails.append(thumbnail)
 
-            # Load thumbnail data in background
-            Thread(
-                target=self._load_thumbnail_async,
-                args=(thumbnail, video_file),
-                daemon=True
-            ).start()
+            # Load thumbnail data using thread pool (limits concurrent downloads)
+            self.executor.submit(self._load_thumbnail_async, thumbnail, video_file)
 
     def _load_thumbnail_async(self, thumbnail: VideoThumbnail, video_file: VideoFile) -> None:
         """Load thumbnail data asynchronously.
