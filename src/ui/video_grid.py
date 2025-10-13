@@ -205,7 +205,9 @@ class VideoGrid(Gtk.ScrolledWindow):
                 return
 
             logger.debug(f"Fetching thumbnail from API: {video_file.filename}")
-            thumbnail_data = self.api.get_thumbnail(video_file.path)
+            # Convert .TS video path to .THM thumbnail path
+            thumbnail_path = video_file.path.replace('.TS', '.THM')
+            thumbnail_data = self.api.get_thumbnail(thumbnail_path)
 
             if thumbnail_data:
                 # Cache the thumbnail
