@@ -126,8 +126,9 @@ class VideoGrid(Gtk.ScrolledWindow):
         self.api = None  # Set by caller
         self.thumbnails: List[VideoThumbnail] = []
 
-        # Thread pool for controlled thumbnail loading (max 5 concurrent downloads)
-        self.executor = ThreadPoolExecutor(max_workers=5, thread_name_prefix="thumbnail-loader")
+        # Thread pool for controlled thumbnail loading (max 3 concurrent downloads)
+        # Using 3 instead of 5 to be more conservative with API rate limiting
+        self.executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="thumbnail-loader")
         self.loading_batch_id = 0  # Track which batch of thumbnails we're loading
 
         # Flow box for grid layout
@@ -235,6 +236,15 @@ class VideoGrid(Gtk.ScrolledWindow):
                 return
 
             if thumbnail_data:
+                # Validate it's actually a JPEG (starts with FF D8)
+                if len(thumbnail_data) < 2 or thumbnail_data[:2] != b'\xff\xd8':
+                    logger.error(f"Invalid thumbnail data for {video_file.filename}: starts with {thumbnail_data[:10].hex() if len(thumbnail_data) >= 10 else 'empty'}")
+                    # If it starts with <! it's likely an HTML error page
+                    if thumbnail_data[:2] == b'<!':
+                        logger.error(f"API returned HTML error: {thumbnail_data[:200].decode('latin1', errors='ignore')}")
+                    GLib.idle_add(thumbnail._show_error)
+                    return
+
                 # Cache the thumbnail
                 self.cache_manager.save_thumbnail(video_file.path, thumbnail_data)
 
