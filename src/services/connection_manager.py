@@ -98,6 +98,15 @@ class ConnectionManager:
             wifi_info = self.api.get_wifi()
             logger.debug(f"WiFi info: {wifi_info}")
 
+            # Stop recording to enable file browsing
+            logger.info("Stopping recording to enable file access")
+            try:
+                stop_result = self.api.work_mode_cmd('stop')
+                logger.debug(f"Stop recording result: {stop_result}")
+            except Exception as e:
+                logger.warning(f"Failed to stop recording: {e}")
+                # Continue anyway - not critical
+
             self.is_connected = True
             success_msg = f"Connected to dashcam at {Config.DASHCAM_IP}"
             logger.info(success_msg)
