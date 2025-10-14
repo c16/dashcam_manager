@@ -6,6 +6,7 @@ import logging
 from typing import Optional, Dict
 from src.api.models import DownloadTask
 from src.services.download_manager import DownloadManager
+from src.ui.video_player import VideoPlayer
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +186,16 @@ class DownloadPanel(Gtk.Box):
             remove_btn.connect("clicked", lambda w: self.on_remove_task(task))
             bottom_row.append(remove_btn)
 
+        # Play button for completed downloads
+        if task.status == "completed" and task.local_path:
+            play_btn = Gtk.Button(label="Play")
+            play_btn.connect("clicked", lambda w: self.on_play_task(task))
+            bottom_row.append(play_btn)
+
+            folder_btn = Gtk.Button(label="Show")
+            folder_btn.connect("clicked", lambda w: self.on_show_task(task))
+            bottom_row.append(folder_btn)
+
         container.append(bottom_row)
 
         return container
@@ -333,6 +344,26 @@ class DownloadPanel(Gtk.Box):
         if self.download_manager:
             self.download_manager.remove_from_queue(task)
             self.refresh_queue()
+
+    def on_play_task(self, task: DownloadTask):
+        """Handle play button click.
+
+        Args:
+            task: Task to play
+        """
+        if task.local_path:
+            success = VideoPlayer.play_video(task.local_path)
+            if not success:
+                logger.warning(f"Failed to play video: {task.file.filename}")
+
+    def on_show_task(self, task: DownloadTask):
+        """Handle show in folder button click.
+
+        Args:
+            task: Task to show
+        """
+        if task.local_path:
+            VideoPlayer.open_in_file_manager(task.local_path)
 
     def on_clear_completed(self, button):
         """Handle clear completed button click.

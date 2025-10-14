@@ -10,6 +10,7 @@ from src.services.cache_manager import CacheManager
 from src.services.download_manager import DownloadManager
 from src.ui.video_grid import VideoGrid
 from src.ui.download_panel import DownloadPanel
+from src.ui.settings_panel import SettingsDialog
 from src.api.models import VideoFile
 from pathlib import Path
 import os
@@ -326,7 +327,13 @@ class MainWindow(Gtk.ApplicationWindow):
     def on_settings_clicked(self, button):
         """Handle settings button click."""
         logger.info("Settings button clicked")
-        # TODO: Implement settings dialog in Sprint 4
+
+        # Create and show settings dialog
+        settings_dialog = SettingsDialog(
+            parent_window=self,
+            api=self.connection_manager.api if self.connection_manager.is_connected else None
+        )
+        settings_dialog.present()
 
     def on_directory_selected(self, button, dir_name):
         """Handle directory selection."""

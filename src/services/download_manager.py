@@ -299,6 +299,34 @@ class DownloadManager:
         logger.info(f"Starting download: {task.file.filename}")
         start_time = time.time()
 
+        # Retry logic
+        max_retries = 3
+        retry_delay = 2.0
+
+        for attempt in range(max_retries):
+            try:
+                self._download_video_attempt(task, start_time)
+                return  # Success
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Download attempt {attempt + 1} failed: {task.file.filename}, {e}")
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    # Final attempt failed
+                    logger.error(f"Download failed after {max_retries} attempts: {task.file.filename}, {e}", exc_info=True)
+                    task.status = "failed"
+                    task.error = f"Failed after {max_retries} attempts: {str(e)}"
+                    task.progress = 0.0
+                    raise
+
+    def _download_video_attempt(self, task: DownloadTask, start_time: float) -> None:
+        """Single download attempt with progress tracking.
+
+        Args:
+            task: DownloadTask to process
+            start_time: Download start time
+        """
         try:
             # Stream download with progress tracking
             response = self.api.get_video_file(task.file.path, stream=True)
@@ -357,10 +385,7 @@ class DownloadManager:
             logger.info(f"Download completed: {task.file.filename} ({size_mb:.1f}MB @ {task.speed_mbps:.1f} Mbps)")
 
         except Exception as e:
-            logger.error(f"Download failed: {task.file.filename}, {e}", exc_info=True)
-            task.status = "failed"
-            task.error = str(e)
-            task.progress = 0.0
+            logger.error(f"Download attempt failed: {task.file.filename}, {e}", exc_info=True)
             raise
 
     def __del__(self):
