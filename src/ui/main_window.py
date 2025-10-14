@@ -7,8 +7,12 @@ from threading import Thread
 from typing import List
 from src.services.connection_manager import ConnectionManager
 from src.services.cache_manager import CacheManager
+from src.services.download_manager import DownloadManager
 from src.ui.video_grid import VideoGrid
+from src.ui.download_panel import DownloadPanel
 from src.api.models import VideoFile
+from pathlib import Path
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,10 @@ class MainWindow(Gtk.ApplicationWindow):
         # Initialize managers
         self.connection_manager = ConnectionManager(on_status_change=self.on_connection_status_changed)
         self.cache_manager = CacheManager()
+        self.download_manager = None  # Created after connection
+
+        # Download directory
+        self.download_dir = str(Path.home() / "Videos" / "Dashcam")
 
         # Current state
         self.current_directory = None
@@ -116,6 +124,12 @@ class MainWindow(Gtk.ApplicationWindow):
         connect_button = Gtk.Button(label="Connect")
         connect_button.connect("clicked", self.on_connect_clicked)
         header.pack_start(connect_button)
+
+        # Download All button
+        self.download_all_button = Gtk.Button(label="Download All")
+        self.download_all_button.set_sensitive(False)
+        self.download_all_button.connect("clicked", self.on_download_all_clicked)
+        header.pack_start(self.download_all_button)
 
         # Settings button
         settings_button = Gtk.Button(icon_name="preferences-system-symbolic")
@@ -236,30 +250,11 @@ class MainWindow(Gtk.ApplicationWindow):
     def create_right_sidebar(self):
         """Create right sidebar with download queue."""
         frame = Gtk.Frame()
-        frame.set_size_request(250, -1)
+        frame.set_size_request(300, -1)
 
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        frame.set_child(scrolled)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        box.set_margin_start(12)
-        box.set_margin_end(12)
-        box.set_margin_top(12)
-        box.set_margin_bottom(12)
-        scrolled.set_child(box)
-
-        # Title
-        title = Gtk.Label(label="Download Queue")
-        title.add_css_class("heading")
-        title.set_xalign(0)
-        box.append(title)
-
-        # Placeholder message
-        placeholder = Gtk.Label(label="No downloads")
-        placeholder.add_css_class("dim-label")
-        placeholder.set_margin_top(24)
-        box.append(placeholder)
+        # Create download panel
+        self.download_panel = DownloadPanel(self.download_manager)
+        frame.set_child(self.download_panel)
 
         return frame
 
@@ -311,6 +306,22 @@ class MainWindow(Gtk.ApplicationWindow):
                 GLib.idle_add(self._update_connect_button_state, button)
 
             Thread(target=connect_thread, daemon=True).start()
+
+    def on_download_all_clicked(self, button):
+        """Handle download all button click."""
+        logger.info("Download All button clicked")
+
+        if not self.download_manager or not self.current_videos:
+            logger.warning("No videos to download or download manager not initialized")
+            return
+
+        # Add all current videos to download queue
+        tasks = self.download_manager.add_multiple(self.current_videos)
+        self.download_panel.refresh_queue()
+
+        count = len(tasks)
+        self.status_label.set_label(f"Added {count} videos to download queue")
+        logger.info(f"Added {count} videos to download queue")
 
     def on_settings_clicked(self, button):
         """Handle settings button click."""
@@ -386,8 +397,26 @@ class MainWindow(Gtk.ApplicationWindow):
             # Set API for video grid when connected
             if self.connection_manager.api:
                 self.video_grid.set_api(self.connection_manager.api)
+
+                # Initialize download manager if not already created
+                if not self.download_manager:
+                    self.download_manager = DownloadManager(
+                        api=self.connection_manager.api,
+                        download_dir=self.download_dir,
+                        max_parallel=3,
+                        on_progress_update=self.download_panel.on_task_progress,
+                        on_complete=self.download_panel.on_task_complete
+                    )
+                    self.download_manager.start()
+                    self.download_panel.set_download_manager(self.download_manager)
+                    logger.info(f"Download manager initialized with dir: {self.download_dir}")
         else:
             button.set_label("Connect")
+            # Stop download manager on disconnect
+            if self.download_manager:
+                self.download_manager.stop()
+                self.download_manager = None
+                logger.info("Download manager stopped")
 
     def _load_directory_async(self, directory: str) -> None:
         """Load videos from directory in background thread.
@@ -446,9 +475,11 @@ class MainWindow(Gtk.ApplicationWindow):
         if videos:
             self.video_grid.load_videos(videos)
             self.status_label.set_label(f"Loaded {len(videos)} videos from {directory}")
+            self.download_all_button.set_sensitive(True)
         else:
             self.video_grid.show_placeholder(f"No videos found in {directory}")
             self.status_label.set_label(f"No videos in {directory}")
+            self.download_all_button.set_sensitive(False)
 
     def on_video_clicked(self, video_file: VideoFile) -> None:
         """Handle video thumbnail click.
@@ -457,8 +488,14 @@ class MainWindow(Gtk.ApplicationWindow):
             video_file: VideoFile that was clicked
         """
         logger.info(f"Video clicked: {video_file.filename}")
-        self.status_label.set_label(f"Selected: {video_file.filename}")
-        # TODO: Implement video playback or download in Sprint 3/4
+
+        # Add to download queue
+        if self.download_manager:
+            task = self.download_manager.add_to_queue(video_file)
+            self.download_panel.refresh_queue()
+            self.status_label.set_label(f"Added to download queue: {video_file.filename}")
+        else:
+            self.status_label.set_label(f"Not connected - cannot download {video_file.filename}")
 
     def _on_filter_changed(self, checkbox) -> None:
         """Handle filter checkbox change."""

@@ -93,3 +93,13 @@ class DownloadTask:
     def has_failed(self) -> bool:
         """Check if download failed."""
         return self.status == "failed"
+
+    def __hash__(self) -> int:
+        """Make DownloadTask hashable for use in dictionaries."""
+        return hash((self.file.path, self.file.filename))
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on file path and filename."""
+        if not isinstance(other, DownloadTask):
+            return False
+        return self.file.path == other.file.path and self.file.filename == other.file.filename
