@@ -62,13 +62,12 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def setup_ui(self):
         """Build the main UI layout."""
+        # Create header bar first (this sets it as titlebar)
+        header_bar = self.create_header_bar()
+
         # Main vertical box
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.set_child(main_box)
-
-        # Header bar
-        header_bar = self.create_header_bar()
-        main_box.append(header_bar)
 
         # Content area with horizontal panes
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -107,6 +106,9 @@ class MainWindow(Gtk.ApplicationWindow):
         """Create the header bar with connection status."""
         header = Gtk.HeaderBar()
         header.set_show_title_buttons(True)
+
+        # Set this HeaderBar as the titlebar (replaces window decorations)
+        self.set_titlebar(header)
 
         # Title
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -165,7 +167,6 @@ class MainWindow(Gtk.ApplicationWindow):
         directories = [
             "Normal Videos",
             "Emergency Videos",
-            "Parking Mode",
             "Back Camera",
             "Back Emergency",
             "Photos"
@@ -347,7 +348,6 @@ class MainWindow(Gtk.ApplicationWindow):
         dir_mapping = {
             "Normal Videos": "norm",
             "Emergency Videos": "emr",
-            "Parking Mode": "norm",  # Same as normal
             "Back Camera": "back_norm",
             "Back Emergency": "back_emr",
             "Photos": "photo"
