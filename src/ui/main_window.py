@@ -404,8 +404,13 @@ class MainWindow(Gtk.ApplicationWindow):
 
             logger.info(f"Loading directory: {directory}")
 
+            # Stop recording before each directory load to ensure API is in correct state
+            try:
+                api.work_mode_cmd('stop')
+            except Exception as e:
+                logger.warning(f"Failed to stop recording before directory load: {e}")
+
             # Get file list from API
-            # Note: Recording is kept stopped by the connection monitor
             file_paths = api.get_dir_file_list_parsed(directory, 0, 100)
             logger.info(f"Found {len(file_paths)} files in {directory}")
 
