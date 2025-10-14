@@ -2,7 +2,7 @@
 
 ## Quick Start for Claude CLI
 
-This project builds a dashcam video management application. Start with Linux desktop, then port to Flutter mobile.
+This project builds a dashcam video management application. Start with Linux desktop, then a flutter app, then port to Flutter mobile.
 
 ---
 
@@ -15,7 +15,8 @@ This project builds a dashcam video management application. Start with Linux des
 
 **What we're building**:
 - Phase 1: Linux desktop app (GTK4 or Qt) for video browsing and downloading
-- Phase 2: Flutter mobile app for Android/iOS
+- Phase 2: Linux Flutter app
+- Phase 3: Flutter mobile app for Android/iOS
 
 **Current priority**: Build Linux desktop prototype
 

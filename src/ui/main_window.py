@@ -333,7 +333,7 @@ class MainWindow(Gtk.ApplicationWindow):
             parent_window=self,
             api=self.connection_manager.api if self.connection_manager.is_connected else None
         )
-        settings_dialog.present()
+        settings_dialog.show()
 
     def on_directory_selected(self, button, dir_name):
         """Handle directory selection."""

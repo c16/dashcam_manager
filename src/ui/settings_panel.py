@@ -9,7 +9,7 @@ from src.api.client import DashcamAPI
 logger = logging.getLogger(__name__)
 
 
-class SettingsDialog(Gtk.Window):
+class SettingsDialog(Gtk.Dialog):
     """Dialog for configuring dashcam settings."""
 
     def __init__(self, parent_window: Gtk.Window, api: Optional[DashcamAPI] = None):
@@ -19,11 +19,8 @@ class SettingsDialog(Gtk.Window):
             parent_window: Parent window
             api: DashcamAPI instance for reading/writing settings
         """
-        super().__init__()
-        self.set_title("Dashcam Settings")
+        super().__init__(title="Dashcam Settings", transient_for=parent_window, modal=True)
         self.set_default_size(600, 500)
-        self.set_transient_for(parent_window)
-        self.set_modal(True)
 
         self.api = api
         self.settings = {}
@@ -37,26 +34,24 @@ class SettingsDialog(Gtk.Window):
 
     def setup_ui(self):
         """Build the settings dialog UI."""
-        # Main container
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        self.set_child(main_box)
+        # Get the content area
+        content_area = self.get_content_area()
+        content_area.set_orientation(Gtk.Orientation.VERTICAL)
+        content_area.set_spacing(0)
 
-        # Header bar
-        header = Gtk.HeaderBar()
-        header.set_show_title_buttons(True)
-        main_box.append(header)
-
-        # Save button
-        save_button = Gtk.Button(label="Save")
+        # Add Save and Close buttons to action area
+        self.add_button("Close", Gtk.ResponseType.CLOSE)
+        save_button = self.add_button("Save", Gtk.ResponseType.APPLY)
         save_button.add_css_class("suggested-action")
-        save_button.connect("clicked", self.on_save_clicked)
-        header.pack_end(save_button)
+
+        # Connect response signal
+        self.connect("response", self.on_response)
 
         # Scrolled window for settings
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.set_vexpand(True)
-        main_box.append(scrolled)
+        content_area.append(scrolled)
 
         # Settings container
         settings_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -140,9 +135,21 @@ class SettingsDialog(Gtk.Window):
         self.status_label.set_margin_start(24)
         self.status_label.set_margin_end(24)
         self.status_label.set_margin_bottom(12)
-        main_box.append(self.status_label)
+        content_area.append(self.status_label)
 
         logger.info("Settings dialog UI setup complete")
+
+    def on_response(self, dialog, response):
+        """Handle dialog response.
+
+        Args:
+            dialog: The dialog
+            response: Response type
+        """
+        if response == Gtk.ResponseType.APPLY:
+            self.on_save_clicked(None)
+        elif response == Gtk.ResponseType.CLOSE:
+            self.close()
 
     def add_section(self, container: Gtk.Box, title: str):
         """Add a section header.
@@ -273,7 +280,7 @@ class SettingsDialog(Gtk.Window):
             logger.info("Settings saved successfully")
 
             # Close dialog after brief delay
-            GLib.timeout_add_seconds(1, self.close)
+            GLib.timeout_add_seconds(1, lambda: self.response(Gtk.ResponseType.CLOSE))
 
         except Exception as e:
             error_msg = f"Failed to save settings: {str(e)}"
