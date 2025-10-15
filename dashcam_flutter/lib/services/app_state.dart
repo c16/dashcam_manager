@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../api/dashcam_api.dart';
 import '../models/video_file.dart';
 import '../models/download_task.dart';
 import 'download_manager.dart';
+import 'preferences_service.dart';
 
 /// Application state management
 class AppState extends ChangeNotifier {
+  // Services
+  final PreferencesService preferencesService;
+
   // Connection state
   bool _isConnected = false;
   String _connectionStatus = 'Not connected';
@@ -42,6 +45,8 @@ class AppState extends ChangeNotifier {
   List<DownloadTask> get downloadQueue => _downloadManager?.queue ?? [];
   String get statusMessage => _statusMessage;
 
+  AppState({required this.preferencesService});
+
   /// Connect to dashcam
   Future<bool> connect() async {
     try {
@@ -58,11 +63,19 @@ class AppState extends ChangeNotifier {
       await _api!.setWorkMode('ENTER_PLAYBACK');
 
       // Initialize download manager
-      final downloadsDir = await _getDownloadsDirectory();
+      final downloadsDir = await preferencesService.getDownloadDirectory();
+      final maxParallel = preferencesService.getMaxParallelDownloads();
+
+      // Ensure directory exists
+      final dir = Directory(downloadsDir);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+
       _downloadManager = DownloadManager(
         api: _api!,
         downloadDir: downloadsDir,
-        maxParallel: 3,
+        maxParallel: maxParallel,
       );
       _downloadManager!.addListener(_onDownloadManagerUpdate);
       _downloadManager!.start();
@@ -100,27 +113,6 @@ class AppState extends ChangeNotifier {
     _allVideos = [];
     _filteredVideos = [];
     notifyListeners();
-  }
-
-  /// Get downloads directory
-  Future<String> _getDownloadsDirectory() async {
-    if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
-      final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-      if (home != null) {
-        final dir = Directory('$home/Videos/Dashcam');
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-        }
-        return dir.path;
-      }
-    }
-    // Fallback to app documents directory
-    final appDir = await getApplicationDocumentsDirectory();
-    final dir = Directory('${appDir.path}/Dashcam');
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-    return dir.path;
   }
 
   /// Called when download manager updates

@@ -70,7 +70,10 @@ class MainScreen extends StatelessWidget {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (context) => SettingsDialog(api: appState.api),
+                    builder: (context) => SettingsDialog(
+                      api: appState.api,
+                      preferencesService: appState.preferencesService,
+                    ),
                   );
                 },
               );

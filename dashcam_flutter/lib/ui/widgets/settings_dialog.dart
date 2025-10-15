@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../api/dashcam_api.dart';
+import '../../services/preferences_service.dart';
 
 /// Settings dialog for dashcam configuration
 class SettingsDialog extends StatefulWidget {
   final DashcamAPI? api;
+  final PreferencesService preferencesService;
 
-  const SettingsDialog({super.key, this.api});
+  const SettingsDialog({
+    super.key,
+    this.api,
+    required this.preferencesService,
+  });
 
   @override
   State<SettingsDialog> createState() => _SettingsDialogState();
@@ -16,7 +23,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String _statusMessage = '';
   bool _isLoading = false;
 
-  // Settings
+  // App settings
+  String _downloadDirectory = '';
+  int _maxParallelDownloads = 3;
+
+  // Camera settings
   String _videoQuality = 'High';
   String _loopDuration = '3 minutes';
   bool _audioRecording = true;
@@ -30,12 +41,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   void initState() {
     super.initState();
+    _loadAppSettings();
     if (widget.api != null) {
-      _loadSettings();
+      _loadDeviceSettings();
     }
   }
 
-  Future<void> _loadSettings() async {
+  Future<void> _loadAppSettings() async {
+    final downloadDir = await widget.preferencesService.getDownloadDirectory();
+    final maxParallel = widget.preferencesService.getMaxParallelDownloads();
+
+    setState(() {
+      _downloadDirectory = downloadDir;
+      _maxParallelDownloads = maxParallel;
+    });
+  }
+
+  Future<void> _loadDeviceSettings() async {
     if (widget.api == null) {
       setState(() {
         _statusMessage = 'Not connected to dashcam';
@@ -66,23 +88,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Future<void> _saveSettings() async {
-    if (widget.api == null) {
-      setState(() {
-        _statusMessage = 'Not connected to dashcam';
-      });
-      return;
-    }
-
     setState(() {
       _isLoading = true;
       _statusMessage = 'Saving settings...';
     });
 
     try {
-      // Save settings via API
-      // This is a placeholder - actual implementation would use specific API calls
+      // Save app settings
+      await widget.preferencesService.setDownloadDirectory(_downloadDirectory);
+      await widget.preferencesService.setMaxParallelDownloads(_maxParallelDownloads);
 
-      await Future.delayed(const Duration(seconds: 1));
+      // Save camera settings via API (if connected)
+      if (widget.api != null) {
+        // This is a placeholder - actual implementation would use specific API calls
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
 
       setState(() {
         _statusMessage = 'Settings saved successfully';
@@ -99,6 +119,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
       setState(() {
         _statusMessage = 'Failed to save settings: $e';
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _browseDownloadDirectory() async {
+    String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+    if (selectedDirectory != null) {
+      setState(() {
+        _downloadDirectory = selectedDirectory;
       });
     }
   }
@@ -144,6 +173,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // App Settings
+                    _buildSection('Application Settings'),
+                    _buildDirectorySetting(
+                      'Download Directory',
+                      _downloadDirectory,
+                      _browseDownloadDirectory,
+                    ),
+                    _buildDropdownSetting('Max Parallel Downloads',
+                        _maxParallelDownloads.toString(), ['1', '2', '3', '4', '5'],
+                        (value) {
+                      setState(() => _maxParallelDownloads = int.parse(value!));
+                    }),
+
+                    const SizedBox(height: 24),
+
                     // Camera Settings
                     _buildSection('Camera Settings'),
                     _buildDropdownSetting('Video Quality', _videoQuality,
@@ -320,6 +364,47 @@ class _SettingsDialogState extends State<SettingsDialog> {
               );
             }).toList(),
             onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDirectorySetting(
+      String label, String path, VoidCallback onBrowse) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor,
+                    ),
+                  ),
+                  child: Text(
+                    path.isEmpty ? 'Not set' : path,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: onBrowse,
+                child: const Text('Browse...'),
+              ),
+            ],
           ),
         ],
       ),
