@@ -10,7 +10,7 @@ class WiFiService {
   bool _isConnectedToDashcam = false;
 
   /// Default dashcam WiFi SSID (can be configured)
-  static const String defaultDashcamSSID = 'DIRECT-';
+  static const String defaultDashcamSSID = 'Dashcam_A79500';
   String dashcamSSID = defaultDashcamSSID;
   String? dashcamPassword;
 
@@ -200,10 +200,10 @@ class WiFiService {
   }
 
   /// Find dashcam networks in available networks
-  Future<List<WifiNetwork>> findDashcamNetworks({String prefix = 'DIRECT-'}) async {
+  Future<List<WifiNetwork>> findDashcamNetworks({String ssidPattern = 'Dashcam_'}) async {
     final networks = await scanNetworks();
     return networks.where((network) =>
-      network.ssid?.startsWith(prefix) ?? false
+      network.ssid?.startsWith(ssidPattern) ?? false
     ).toList();
   }
 }

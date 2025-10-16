@@ -61,7 +61,7 @@ class AppState extends ChangeNotifier {
         _connectionStatus = 'Switching to dashcam WiFi...';
         notifyListeners();
 
-        final ssid = dashcamSSID ?? 'DIRECT-'; // Default or user-provided SSID
+        final ssid = dashcamSSID ?? 'Dashcam_A79500'; // Default or user-provided SSID
         final wifiConnected = await _wifiService.connectToDashcam(
           ssid: ssid,
           password: dashcamPassword,
