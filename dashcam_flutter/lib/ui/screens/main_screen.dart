@@ -37,7 +37,7 @@ class MainScreen extends StatelessWidget {
               return ElevatedButton(
                 onPressed: () async {
                   if (appState.isConnected) {
-                    appState.disconnect();
+                    await appState.disconnect();
                   } else {
                     await appState.connect();
                   }

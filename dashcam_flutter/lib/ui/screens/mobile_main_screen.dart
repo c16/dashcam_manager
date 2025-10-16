@@ -46,7 +46,7 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 tooltip: appState.isConnected ? 'Disconnect' : 'Connect',
                 onPressed: () async {
                   if (appState.isConnected) {
-                    appState.disconnect();
+                    await appState.disconnect();
                   } else {
                     await appState.connect();
                   }

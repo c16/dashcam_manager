@@ -5,11 +5,13 @@ import '../models/video_file.dart';
 import '../models/download_task.dart';
 import 'download_manager.dart';
 import 'preferences_service.dart';
+import 'wifi_service.dart';
 
 /// Application state management
 class AppState extends ChangeNotifier {
   // Services
   final PreferencesService preferencesService;
+  final WiFiService _wifiService = WiFiService();
 
   // Connection state
   bool _isConnected = false;
@@ -48,10 +50,32 @@ class AppState extends ChangeNotifier {
   AppState({required this.preferencesService});
 
   /// Connect to dashcam
-  Future<bool> connect() async {
+  Future<bool> connect({String? dashcamSSID, String? dashcamPassword}) async {
     try {
       _connectionStatus = 'Connecting...';
       notifyListeners();
+
+      // Switch to dashcam WiFi if on Android
+      if (Platform.isAndroid) {
+        _connectionStatus = 'Switching to dashcam WiFi...';
+        notifyListeners();
+
+        final ssid = dashcamSSID ?? 'DIRECT-'; // Default or user-provided SSID
+        final wifiConnected = await _wifiService.connectToDashcam(
+          ssid: ssid,
+          password: dashcamPassword,
+        );
+
+        if (!wifiConnected) {
+          _connectionStatus = 'Failed to connect to dashcam WiFi';
+          _statusMessage = 'Could not switch to dashcam WiFi. Please connect manually.';
+          notifyListeners();
+          return false;
+        }
+
+        _connectionStatus = 'Connected to dashcam WiFi, initializing...';
+        notifyListeners();
+      }
 
       _api = DashcamAPI();
 
@@ -99,7 +123,7 @@ class AppState extends ChangeNotifier {
   }
 
   /// Disconnect from dashcam
-  void disconnect() {
+  Future<void> disconnect() async {
     _downloadManager?.stop();
     _downloadManager?.removeListener(_onDownloadManagerUpdate);
     _downloadManager?.dispose();
@@ -107,11 +131,22 @@ class AppState extends ChangeNotifier {
     _api?.dispose();
     _api = null;
     _isConnected = false;
-    _connectionStatus = 'Not connected';
-    _statusMessage = 'Disconnected';
+    _connectionStatus = 'Disconnecting...';
     _currentDirectory = null;
     _allVideos = [];
     _filteredVideos = [];
+    notifyListeners();
+
+    // Restore previous WiFi on Android
+    if (Platform.isAndroid) {
+      _statusMessage = 'Restoring previous WiFi connection...';
+      notifyListeners();
+
+      await _wifiService.disconnectFromDashcam();
+    }
+
+    _connectionStatus = 'Not connected';
+    _statusMessage = 'Disconnected';
     notifyListeners();
   }
 
