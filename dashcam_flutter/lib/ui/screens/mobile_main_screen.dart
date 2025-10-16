@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../constants.dart';
 import '../../services/app_state.dart';
 import '../widgets/settings_dialog.dart';
 import '../widgets/mobile_video_grid.dart';
@@ -26,7 +27,7 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Dashcam'),
+                Text(AppConstants.appTitle),
                 Text(
                   appState.connectionStatus,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(

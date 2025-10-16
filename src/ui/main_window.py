@@ -17,6 +17,9 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Application version
+__version__ = "1.0.0"
+
 
 class DashcamApp(Gtk.Application):
     """Main GTK application for dashcam manager."""
@@ -42,7 +45,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_title("Dashcam Manager")
+        self.set_title(f"Dashcam Manager v{__version__}")
         self.set_default_size(1200, 800)
 
         # Initialize managers
@@ -112,7 +115,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
         # Title
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        title_label = Gtk.Label(label="Dashcam Manager")
+        title_label = Gtk.Label(label=f"Dashcam Manager v{__version__}")
         title_label.add_css_class("title")
         title_box.append(title_label)
 
