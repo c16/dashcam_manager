@@ -52,13 +52,15 @@ This document outlines the steps completed to prepare the Dashcam Manager reposi
 dashcam/
 ├── README.md                    # Main documentation
 ├── BUILD_AND_DEPLOY.md         # Build and deployment guide
-├── setup.py                     # Python package (v1.0.0)
-├── requirements.txt             # Python dependencies
-├── src/                         # Python GTK application
-│   ├── api/                     # API client
-│   ├── services/                # Business logic
-│   ├── ui/                      # GTK4 interface
-│   └── utils/                   # Utilities
+├── dashcam_python/              # Python GTK application
+│   ├── src/                     # Python source code
+│   │   ├── api/                 # API client
+│   │   ├── services/            # Business logic
+│   │   ├── ui/                  # GTK4 interface
+│   │   └── utils/               # Utilities
+│   ├── tests/                   # Python tests
+│   ├── setup.py                 # Python package (v1.0.0)
+│   └── requirements.txt         # Python dependencies
 ├── dashcam_flutter/             # Flutter application
 │   ├── lib/                     # Dart source code
 │   │   ├── api/                 # API client
@@ -69,7 +71,7 @@ dashcam/
 │   ├── android/                 # Android configuration
 │   ├── linux/                   # Linux configuration
 │   └── pubspec.yaml            # Flutter dependencies (v1.0.0+1)
-└── tests/                       # Python tests
+└── resources/                   # Shared resources
 ```
 
 ## Features Implemented

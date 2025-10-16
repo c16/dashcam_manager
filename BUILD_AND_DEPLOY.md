@@ -46,12 +46,12 @@ This guide covers building and running release versions of the Dashcam Manager a
 
 **Development mode:**
 ```bash
-python dashcam.py
+python3 src/ui/main_window.py
 ```
 
 **Production mode:**
 ```bash
-python3 dashcam.py
+python3 src/ui/main_window.py
 ```
 
 ### Creating a Desktop Launcher (Linux)
@@ -62,7 +62,7 @@ python3 dashcam.py
    [Desktop Entry]
    Name=Dashcam Manager
    Comment=Manage and download dashcam videos
-   Exec=python3 /path/to/dashcam_python/dashcam.py
+   Exec=python3 /path/to/dashcam_python/src/ui/main_window.py
    Icon=/path/to/dashcam_python/icon.png
    Terminal=false
    Type=Application
@@ -86,7 +86,7 @@ python3 dashcam.py
 
 2. **Create executable:**
    ```bash
-   pyinstaller --onefile --windowed --name="Dashcam Manager" dashcam.py
+   pyinstaller --onefile --windowed --name="Dashcam Manager" src/ui/main_window.py
    ```
 
 3. **The executable will be in `dist/Dashcam Manager`**

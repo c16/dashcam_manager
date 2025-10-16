@@ -30,6 +30,8 @@ Mobile-optimized interface with bottom navigation and touch-friendly controls.
 ### Python GTK (Linux Desktop)
 
 ```bash
+cd dashcam_python
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -113,10 +115,10 @@ All settings can be customized through the Settings dialog:
 
 The application consists of three main components:
 
-### 1. Python GTK Application (`src/`)
-- **API Client** (`src/api/`): HTTP client for dashcam communication
-- **Services** (`src/services/`): Connection management, caching, downloads
-- **UI** (`src/ui/`): GTK4-based desktop interface
+### 1. Python GTK Application (`dashcam_python/`)
+- **API Client** (`dashcam_python/src/api/`): HTTP client for dashcam communication
+- **Services** (`dashcam_python/src/services/`): Connection management, caching, downloads
+- **UI** (`dashcam_python/src/ui/`): GTK4-based desktop interface
 
 ### 2. Flutter Linux Application (`dashcam_flutter/`)
 - **API Client** (`lib/api/`): Dart HTTP client
@@ -137,17 +139,21 @@ The dashcam uses a simple HTTP-based API:
 - **File Format**: `.TS` video files with `.THM` thumbnails
 - **Authentication**: Session-based (Cookie: SessionID)
 
-See `src/api/dashcam_api.py` or `dashcam_flutter/lib/api/dashcam_api.dart` for complete API implementation.
+See `dashcam_python/src/api/dashcam_api.py` or `dashcam_flutter/lib/api/dashcam_api.dart` for complete API implementation.
 
 ## Project Structure
 
 ```
 dashcam/
-├── src/                    # Python GTK application
-│   ├── api/               # API client and models
-│   ├── services/          # Business logic
-│   ├── ui/                # GTK4 interface
-│   └── utils/             # Utilities
+├── dashcam_python/        # Python GTK application
+│   ├── src/
+│   │   ├── api/          # API client and models
+│   │   ├── services/     # Business logic
+│   │   ├── ui/           # GTK4 interface
+│   │   └── utils/        # Utilities
+│   ├── tests/            # Python tests
+│   ├── requirements.txt  # Python dependencies
+│   └── setup.py          # Python package configuration
 ├── dashcam_flutter/       # Flutter application (Linux & Android)
 │   ├── lib/
 │   │   ├── api/          # API client
@@ -156,9 +162,7 @@ dashcam/
 │   │   └── ui/           # Flutter widgets
 │   ├── android/          # Android-specific configuration
 │   └── linux/            # Linux-specific configuration
-├── BUILD_AND_DEPLOY.md   # Build and deployment guide
-├── requirements.txt       # Python dependencies
-└── setup.py              # Python package configuration
+└── BUILD_AND_DEPLOY.md   # Build and deployment guide
 ```
 
 ## Development
@@ -167,6 +171,7 @@ dashcam/
 
 ```bash
 # Python tests
+cd dashcam_python
 pytest tests/
 
 # Flutter tests
