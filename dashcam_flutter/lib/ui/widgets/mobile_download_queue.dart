@@ -149,7 +149,7 @@ class _DownloadTaskCard extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Status
-            if (task.status == DownloadStatus.downloading) ...[
+            if (task.status == 'downloading') ...[
               LinearProgressIndicator(
                 value: task.progress,
                 backgroundColor: Colors.grey[200],
@@ -171,14 +171,14 @@ class _DownloadTaskCard extends StatelessWidget {
                     ),
                 ],
               ),
-            ] else if (task.status == DownloadStatus.pending) ...[
+            ] else if (task.status == 'queued') ...[
               Text(
                 'Waiting...',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.orange,
                     ),
               ),
-            ] else if (task.status == DownloadStatus.completed) ...[
+            ] else if (task.status == 'completed') ...[
               Row(
                 children: [
                   const Icon(Icons.check_circle, size: 16, color: Colors.green),
@@ -191,7 +191,7 @@ class _DownloadTaskCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ] else if (task.status == DownloadStatus.failed) ...[
+            ] else if (task.status == 'failed') ...[
               Row(
                 children: [
                   const Icon(Icons.error, size: 16, color: Colors.red),
@@ -217,27 +217,31 @@ class _DownloadTaskCard extends StatelessWidget {
 
   IconData _getStatusIcon() {
     switch (task.status) {
-      case DownloadStatus.pending:
+      case 'queued':
         return Icons.schedule;
-      case DownloadStatus.downloading:
+      case 'downloading':
         return Icons.downloading;
-      case DownloadStatus.completed:
+      case 'completed':
         return Icons.check_circle;
-      case DownloadStatus.failed:
+      case 'failed':
         return Icons.error;
+      default:
+        return Icons.help;
     }
   }
 
   Color _getStatusColor() {
     switch (task.status) {
-      case DownloadStatus.pending:
+      case 'queued':
         return Colors.orange;
-      case DownloadStatus.downloading:
+      case 'downloading':
         return Colors.blue;
-      case DownloadStatus.completed:
+      case 'completed':
         return Colors.green;
-      case DownloadStatus.failed:
+      case 'failed':
         return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 }
