@@ -26,6 +26,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
   // App settings
   String _downloadDirectory = '';
   int _maxParallelDownloads = 3;
+  bool _autoWifiSwitch = false;
 
   // Camera settings
   String _videoQuality = 'High';
@@ -50,10 +51,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
   Future<void> _loadAppSettings() async {
     final downloadDir = await widget.preferencesService.getDownloadDirectory();
     final maxParallel = widget.preferencesService.getMaxParallelDownloads();
+    final autoWifi = widget.preferencesService.getAutoWifiSwitch();
 
     setState(() {
       _downloadDirectory = downloadDir;
       _maxParallelDownloads = maxParallel;
+      _autoWifiSwitch = autoWifi;
     });
   }
 
@@ -97,6 +100,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       // Save app settings
       await widget.preferencesService.setDownloadDirectory(_downloadDirectory);
       await widget.preferencesService.setMaxParallelDownloads(_maxParallelDownloads);
+      await widget.preferencesService.setAutoWifiSwitch(_autoWifiSwitch);
 
       // Save camera settings via API (if connected)
       if (widget.api != null) {
@@ -185,6 +189,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         (value) {
                       setState(() => _maxParallelDownloads = int.parse(value!));
                     }),
+                    _buildSwitchSetting(
+                      'Auto WiFi Switch (Android)',
+                      _autoWifiSwitch,
+                      (value) {
+                        setState(() => _autoWifiSwitch = value);
+                      },
+                    ),
 
                     const SizedBox(height: 24),
 

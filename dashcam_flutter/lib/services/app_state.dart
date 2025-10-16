@@ -55,8 +55,9 @@ class AppState extends ChangeNotifier {
       _connectionStatus = 'Connecting...';
       notifyListeners();
 
-      // Switch to dashcam WiFi if on Android
-      if (Platform.isAndroid) {
+      // Switch to dashcam WiFi if enabled and on Android
+      final autoWifiSwitch = preferencesService.getAutoWifiSwitch();
+      if (Platform.isAndroid && autoWifiSwitch) {
         _connectionStatus = 'Switching to dashcam WiFi...';
         notifyListeners();
 
@@ -137,8 +138,9 @@ class AppState extends ChangeNotifier {
     _filteredVideos = [];
     notifyListeners();
 
-    // Restore previous WiFi on Android
-    if (Platform.isAndroid) {
+    // Restore previous WiFi on Android (only if auto switch was enabled)
+    final autoWifiSwitch = preferencesService.getAutoWifiSwitch();
+    if (Platform.isAndroid && autoWifiSwitch) {
       _statusMessage = 'Restoring previous WiFi connection...';
       notifyListeners();
 

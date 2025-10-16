@@ -6,6 +6,7 @@ import 'dart:io';
 class PreferencesService {
   static const String _downloadDirKey = 'download_directory';
   static const String _maxParallelDownloadsKey = 'max_parallel_downloads';
+  static const String _autoWifiSwitchKey = 'auto_wifi_switch';
 
   final SharedPreferences _prefs;
 
@@ -52,6 +53,16 @@ class PreferencesService {
   /// Set max parallel downloads
   Future<void> setMaxParallelDownloads(int count) async {
     await _prefs.setInt(_maxParallelDownloadsKey, count);
+  }
+
+  /// Get auto WiFi switch setting
+  bool getAutoWifiSwitch() {
+    return _prefs.getBool(_autoWifiSwitchKey) ?? false; // Default to false (manual mode)
+  }
+
+  /// Set auto WiFi switch setting
+  Future<void> setAutoWifiSwitch(bool enabled) async {
+    await _prefs.setBool(_autoWifiSwitchKey, enabled);
   }
 
   /// Get default download directory
