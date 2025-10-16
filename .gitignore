@@ -52,3 +52,25 @@ Thumbs.db
 *.TS
 *.TXT
 videos/
+
+# Flutter
+dashcam_flutter/.dart_tool/
+dashcam_flutter/.flutter-plugins
+dashcam_flutter/.flutter-plugins-dependencies
+dashcam_flutter/.packages
+dashcam_flutter/build/
+dashcam_flutter/.metadata
+
+# Android
+dashcam_flutter/android/.gradle/
+dashcam_flutter/android/local.properties
+dashcam_flutter/android/key.properties
+dashcam_flutter/android/app/google-services.json
+
+# iOS
+dashcam_flutter/ios/Pods/
+dashcam_flutter/ios/.symlinks/
+dashcam_flutter/ios/Flutter/.last_build_id
+
+# Linux
+dashcam_flutter/linux/flutter/ephemeral/
