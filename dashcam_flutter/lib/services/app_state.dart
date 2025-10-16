@@ -57,6 +57,7 @@ class AppState extends ChangeNotifier {
 
       // Switch to dashcam WiFi if enabled and on Android
       final autoWifiSwitch = preferencesService.getAutoWifiSwitch();
+      debugPrint('Auto WiFi Switch setting: $autoWifiSwitch');
       if (Platform.isAndroid && autoWifiSwitch) {
         _connectionStatus = 'Switching to dashcam WiFi...';
         notifyListeners();
