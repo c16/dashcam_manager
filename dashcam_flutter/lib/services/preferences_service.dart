@@ -7,6 +7,8 @@ class PreferencesService {
   static const String _downloadDirKey = 'download_directory';
   static const String _maxParallelDownloadsKey = 'max_parallel_downloads';
   static const String _autoWifiSwitchKey = 'auto_wifi_switch';
+  static const String _themeKey = 'selected_theme';
+  static const String _themeModeKey = 'theme_mode';
 
   final SharedPreferences _prefs;
 
@@ -63,6 +65,26 @@ class PreferencesService {
   /// Set auto WiFi switch setting
   Future<void> setAutoWifiSwitch(bool enabled) async {
     await _prefs.setBool(_autoWifiSwitchKey, enabled);
+  }
+
+  /// Get selected theme
+  String getTheme() {
+    return _prefs.getString(_themeKey) ?? 'blue';
+  }
+
+  /// Set selected theme
+  Future<void> setTheme(String theme) async {
+    await _prefs.setString(_themeKey, theme);
+  }
+
+  /// Get theme mode
+  String getThemeMode() {
+    return _prefs.getString(_themeModeKey) ?? 'system';
+  }
+
+  /// Set theme mode
+  Future<void> setThemeMode(String mode) async {
+    await _prefs.setString(_themeModeKey, mode);
   }
 
   /// Get default download directory

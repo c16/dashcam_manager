@@ -6,6 +6,7 @@ import '../models/download_task.dart';
 import 'download_manager.dart';
 import 'preferences_service.dart';
 import 'wifi_service.dart';
+import 'theme_service.dart';
 
 /// Application state management
 class AppState extends ChangeNotifier {
@@ -33,6 +34,10 @@ class AppState extends ChangeNotifier {
   // Status message
   String _statusMessage = 'Ready';
 
+  // Theme state
+  String _selectedTheme = 'blue';
+  ThemeMode _themeMode = ThemeMode.system;
+
   // Getters
   bool get isConnected => _isConnected;
   String get connectionStatus => _connectionStatus;
@@ -46,8 +51,14 @@ class AppState extends ChangeNotifier {
   bool get showEmergency => _showEmergency;
   List<DownloadTask> get downloadQueue => _downloadManager?.queue ?? [];
   String get statusMessage => _statusMessage;
+  String get selectedTheme => _selectedTheme;
+  ThemeMode get themeMode => _themeMode;
 
-  AppState({required this.preferencesService});
+  AppState({required this.preferencesService}) {
+    // Load theme preferences
+    _selectedTheme = preferencesService.getTheme();
+    _themeMode = ThemeService.stringToThemeMode(preferencesService.getThemeMode());
+  }
 
   /// Connect to dashcam
   Future<bool> connect({String? dashcamSSID, String? dashcamPassword}) async {
@@ -359,5 +370,31 @@ class AppState extends ChangeNotifier {
   void setStatus(String message) {
     _statusMessage = message;
     notifyListeners();
+  }
+
+  /// Update selected theme
+  Future<void> updateTheme(String theme) async {
+    if (ThemeService.isValidTheme(theme)) {
+      _selectedTheme = theme;
+      await preferencesService.setTheme(theme);
+      notifyListeners();
+    }
+  }
+
+  /// Update theme mode
+  Future<void> updateThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    await preferencesService.setThemeMode(ThemeService.themeModeToString(mode));
+    notifyListeners();
+  }
+
+  /// Get light theme for current selection
+  ThemeData getLightTheme() {
+    return ThemeService.getLightTheme(_selectedTheme);
+  }
+
+  /// Get dark theme for current selection
+  ThemeData getDarkTheme() {
+    return ThemeService.getDarkTheme(_selectedTheme);
   }
 }

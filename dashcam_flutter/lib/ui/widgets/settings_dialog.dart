@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import '../../api/dashcam_api.dart';
 import '../../services/preferences_service.dart';
+import '../../services/app_state.dart';
+import '../../services/theme_service.dart';
 
 /// Settings dialog for dashcam configuration
 class SettingsDialog extends StatefulWidget {
@@ -25,11 +28,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   // App settings
   String _downloadDirectory = '';
+  String _selectedTheme = 'blue';
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
     super.initState();
     _loadAppSettings();
+    _loadThemeSettings();
     if (widget.api != null) {
       _loadDeviceSettings();
     }
@@ -40,6 +46,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     setState(() {
       _downloadDirectory = downloadDir;
+    });
+  }
+
+  void _loadThemeSettings() {
+    final appState = context.read<AppState>();
+    setState(() {
+      _selectedTheme = appState.selectedTheme;
+      _themeMode = appState.themeMode;
     });
   }
 
@@ -152,7 +166,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Appearance Section
+                    _buildSection('Appearance'),
+                    _buildThemeDropdown(),
+                    const SizedBox(height: 8),
+                    _buildThemeModeDropdown(),
+
+                    const SizedBox(height: 24),
+
                     // Download Directory
+                    _buildSection('Downloads'),
                     _buildDirectorySetting(
                       'Download Directory',
                       _downloadDirectory,
@@ -248,6 +271,70 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
           ),
           const Divider(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('Color Theme'),
+          ),
+          DropdownButton<String>(
+            value: _selectedTheme,
+            items: ThemeService.availableThemes.map((theme) {
+              return DropdownMenuItem<String>(
+                value: theme,
+                child: Text(ThemeService.themeDisplayNames[theme] ?? theme),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedTheme = value);
+                context.read<AppState>().updateTheme(value);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeModeDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('Theme Mode'),
+          ),
+          DropdownButton<ThemeMode>(
+            value: _themeMode,
+            items: const [
+              DropdownMenuItem(
+                value: ThemeMode.system,
+                child: Text('System'),
+              ),
+              DropdownMenuItem(
+                value: ThemeMode.light,
+                child: Text('Light'),
+              ),
+              DropdownMenuItem(
+                value: ThemeMode.dark,
+                child: Text('Dark'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _themeMode = value);
+                context.read<AppState>().updateThemeMode(value);
+              }
+            },
+          ),
         ],
       ),
     );

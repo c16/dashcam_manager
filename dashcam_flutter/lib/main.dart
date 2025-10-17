@@ -21,28 +21,20 @@ class DashcamApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState(preferencesService: preferencesService),
-      child: MaterialApp(
-        title: 'Dashcam Manager',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
-        themeMode: ThemeMode.system,
-        home: const ResponsiveLayout(
-          mobile: MobileMainScreen(),
-          desktop: MainScreen(),
-        ),
-        debugShowCheckedModeBanner: false,
+      child: Consumer<AppState>(
+        builder: (context, appState, child) {
+          return MaterialApp(
+            title: 'Dashcam Manager',
+            theme: appState.getLightTheme(),
+            darkTheme: appState.getDarkTheme(),
+            themeMode: appState.themeMode,
+            home: const ResponsiveLayout(
+              mobile: MobileMainScreen(),
+              desktop: MainScreen(),
+            ),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }
