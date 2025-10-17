@@ -124,6 +124,54 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Connect using Settings Intent (recommended for Android)
+  /// Opens WiFi settings for user to manually connect
+  Future<void> connectWithSettingsIntent({
+    String? dashcamSSID,
+    required Function() onConnected,
+    Function()? onTimeout,
+  }) async {
+    if (!Platform.isAndroid) {
+      _statusMessage = 'Settings Intent only available on Android';
+      notifyListeners();
+      return;
+    }
+
+    final ssid = dashcamSSID ?? 'Dashcam_A79500';
+    _connectionStatus = 'Opening WiFi settings...';
+    _statusMessage = 'Please connect to $ssid in WiFi settings';
+    notifyListeners();
+
+    // Open WiFi settings
+    final opened = await _wifiService.openWifiSettings();
+    if (!opened) {
+      _statusMessage = 'Could not open WiFi settings';
+      notifyListeners();
+      return;
+    }
+
+    // Start monitoring for connection
+    _wifiService.startConnectionMonitoring(
+      targetSsid: ssid,
+      onConnected: () async {
+        _connectionStatus = 'WiFi connected, initializing...';
+        notifyListeners();
+
+        // Connect to API
+        final success = await connect();
+        if (success) {
+          onConnected();
+        }
+      },
+      onTimeout: () {
+        _statusMessage = 'Connection timeout - dashcam not connected';
+        _connectionStatus = 'Not connected';
+        notifyListeners();
+        onTimeout?.call();
+      },
+    );
+  }
+
   /// Disconnect from dashcam
   Future<void> disconnect() async {
     _downloadManager?.stop();
@@ -151,6 +199,19 @@ class AppState extends ChangeNotifier {
     _connectionStatus = 'Not connected';
     _statusMessage = 'Disconnected';
     notifyListeners();
+  }
+
+  /// Disconnect and open WiFi settings for user to reconnect
+  Future<void> disconnectAndOpenSettings() async {
+    await disconnect();
+
+    if (Platform.isAndroid) {
+      _statusMessage = 'Opening WiFi settings to reconnect...';
+      notifyListeners();
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _wifiService.openWifiSettings();
+    }
   }
 
   /// Called when download manager updates

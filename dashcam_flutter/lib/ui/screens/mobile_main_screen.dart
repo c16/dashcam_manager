@@ -39,6 +39,37 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
           },
         ),
         actions: [
+          // WiFi Settings button (Android only)
+          Consumer<AppState>(
+            builder: (context, appState, child) {
+              if (appState.isConnected) return const SizedBox();
+
+              return IconButton(
+                icon: const Icon(Icons.wifi_find),
+                tooltip: 'Open WiFi Settings',
+                onPressed: () {
+                  appState.connectWithSettingsIntent(
+                    onConnected: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Connected to dashcam!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    onTimeout: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Connection timeout. Try again?'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
           // Connect/Disconnect button
           Consumer<AppState>(
             builder: (context, appState, child) {
@@ -47,7 +78,30 @@ class _MobileMainScreenState extends State<MobileMainScreen> {
                 tooltip: appState.isConnected ? 'Disconnect' : 'Connect',
                 onPressed: () async {
                   if (appState.isConnected) {
-                    await appState.disconnect();
+                    // Show disconnect confirmation
+                    final shouldOpen = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Disconnect'),
+                        content: const Text('Open WiFi settings to reconnect to your original network?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('No'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Yes'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldOpen == true) {
+                      await appState.disconnectAndOpenSettings();
+                    } else {
+                      await appState.disconnect();
+                    }
                   } else {
                     await appState.connect();
                   }

@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:wifi_iot/wifi_iot.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -205,5 +207,106 @@ class WiFiService {
     return networks.where((network) =>
       network.ssid?.startsWith(ssidPattern) ?? false
     ).toList();
+  }
+
+  /// Open Android WiFi settings (Settings Intent method)
+  /// Returns true if settings were opened successfully
+  Future<bool> openWifiSettings() async {
+    if (!Platform.isAndroid) {
+      debugPrint('Settings Intent only available on Android');
+      return false;
+    }
+
+    try {
+      const platform = MethodChannel('wifi_settings');
+      await platform.invokeMethod('openWifiSettings');
+      debugPrint('Opened WiFi settings');
+      return true;
+    } catch (e) {
+      debugPrint('Error opening WiFi settings: $e');
+      return false;
+    }
+  }
+
+  /// Start monitoring for connection to dashcam
+  /// Calls onConnected when connection detected
+  /// Calls onTimeout if no connection after maxAttempts
+  Future<void> startConnectionMonitoring({
+    required String targetSsid,
+    required Function() onConnected,
+    Function()? onTimeout,
+    int maxAttempts = 30,
+    Duration checkInterval = const Duration(seconds: 2),
+  }) async {
+    debugPrint('Starting connection monitoring for: $targetSsid');
+
+    int attempts = 0;
+
+    Timer.periodic(checkInterval, (timer) async {
+      attempts++;
+
+      try {
+        // Get current SSID
+        String? currentSsid = await WiFiForIoTPlugin.getSSID();
+        currentSsid = currentSsid?.replaceAll('"', '');
+
+        debugPrint('Monitoring attempt $attempts/$maxAttempts - Current: ${currentSsid ?? "none"}');
+
+        // Check if connected to target
+        if (currentSsid != null && currentSsid.contains(targetSsid)) {
+          debugPrint('SUCCESS: Connected to $targetSsid');
+
+          // Force WiFi usage (no internet fallback)
+          try {
+            await WiFiForIoTPlugin.forceWifiUsage(true);
+            debugPrint('Forced WiFi usage enabled');
+          } catch (e) {
+            debugPrint('Could not force WiFi usage: $e');
+          }
+
+          _isConnectedToDashcam = true;
+          timer.cancel();
+          onConnected();
+          return;
+        }
+
+        // Check for timeout
+        if (attempts >= maxAttempts) {
+          debugPrint('Monitoring timeout - no connection detected');
+          timer.cancel();
+          onTimeout?.call();
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error during monitoring: $e');
+        timer.cancel();
+        onTimeout?.call();
+      }
+    });
+  }
+
+  /// Disconnect and open WiFi settings for user to reconnect
+  Future<void> disconnectAndOpenSettings() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    try {
+      // Disconnect from dashcam
+      if (_isConnectedToDashcam) {
+        await WiFiForIoTPlugin.disconnect();
+        await WiFiForIoTPlugin.forceWifiUsage(false);
+        _isConnectedToDashcam = false;
+        debugPrint('Disconnected from dashcam');
+      }
+
+      // Wait a moment
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Open WiFi settings
+      await openWifiSettings();
+    } catch (e) {
+      debugPrint('Error in disconnectAndOpenSettings: $e');
+    }
   }
 }
