@@ -25,19 +25,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   // App settings
   String _downloadDirectory = '';
-  int _maxParallelDownloads = 3;
-  bool _autoWifiSwitch = false;
-
-  // Camera settings
-  String _videoQuality = 'High';
-  String _loopDuration = '3 minutes';
-  bool _audioRecording = true;
-  bool _gpsLogging = true;
-  bool _parkingMode = false;
-  bool _timestamp = true;
-  bool _speedDisplay = true;
-  String _gsensorSensitivity = 'Medium';
-  String _autoPowerOff = 'Off';
 
   @override
   void initState() {
@@ -50,13 +37,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Future<void> _loadAppSettings() async {
     final downloadDir = await widget.preferencesService.getDownloadDirectory();
-    final maxParallel = widget.preferencesService.getMaxParallelDownloads();
-    final autoWifi = widget.preferencesService.getAutoWifiSwitch();
 
     setState(() {
       _downloadDirectory = downloadDir;
-      _maxParallelDownloads = maxParallel;
-      _autoWifiSwitch = autoWifi;
     });
   }
 
@@ -99,14 +82,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
     try {
       // Save app settings
       await widget.preferencesService.setDownloadDirectory(_downloadDirectory);
-      await widget.preferencesService.setMaxParallelDownloads(_maxParallelDownloads);
-      await widget.preferencesService.setAutoWifiSwitch(_autoWifiSwitch);
-
-      // Save camera settings via API (if connected)
-      if (widget.api != null) {
-        // This is a placeholder - actual implementation would use specific API calls
-        await Future.delayed(const Duration(milliseconds: 500));
-      }
 
       setState(() {
         _statusMessage = 'Settings saved successfully';
@@ -158,7 +133,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               child: Row(
                 children: [
                   Text(
-                    'Dashcam Settings',
+                    'Settings',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const Spacer(),
@@ -177,73 +152,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // App Settings
-                    _buildSection('Application Settings'),
+                    // Download Directory
                     _buildDirectorySetting(
                       'Download Directory',
                       _downloadDirectory,
                       _browseDownloadDirectory,
                     ),
-                    _buildDropdownSetting('Max Parallel Downloads',
-                        _maxParallelDownloads.toString(), ['1', '2', '3', '4', '5'],
-                        (value) {
-                      setState(() => _maxParallelDownloads = int.parse(value!));
-                    }),
-                    _buildSwitchSetting(
-                      'Auto WiFi Switch (Android)',
-                      _autoWifiSwitch,
-                      (value) {
-                        setState(() => _autoWifiSwitch = value);
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Camera Settings
-                    _buildSection('Camera Settings'),
-                    _buildDropdownSetting('Video Quality', _videoQuality,
-                        ['High', 'Medium', 'Low'], (value) {
-                      setState(() => _videoQuality = value!);
-                    }),
-                    _buildDropdownSetting('Loop Recording', _loopDuration,
-                        ['1 minute', '3 minutes', '5 minutes'], (value) {
-                      setState(() => _loopDuration = value!);
-                    }),
-                    _buildSwitchSetting('Audio Recording', _audioRecording,
-                        (value) {
-                      setState(() => _audioRecording = value);
-                    }),
-                    _buildSwitchSetting('GPS Logging', _gpsLogging, (value) {
-                      setState(() => _gpsLogging = value);
-                    }),
-                    _buildSwitchSetting('Parking Mode', _parkingMode, (value) {
-                      setState(() => _parkingMode = value);
-                    }),
-
-                    const SizedBox(height: 24),
-
-                    // Display Settings
-                    _buildSection('Display'),
-                    _buildSwitchSetting('Date/Time Stamp', _timestamp, (value) {
-                      setState(() => _timestamp = value);
-                    }),
-                    _buildSwitchSetting('Speed Display', _speedDisplay, (value) {
-                      setState(() => _speedDisplay = value);
-                    }),
-
-                    const SizedBox(height: 24),
-
-                    // Advanced Settings
-                    _buildSection('Advanced'),
-                    _buildDropdownSetting('G-Sensor Sensitivity',
-                        _gsensorSensitivity, ['High', 'Medium', 'Low', 'Off'],
-                        (value) {
-                      setState(() => _gsensorSensitivity = value!);
-                    }),
-                    _buildDropdownSetting('Auto Power Off', _autoPowerOff,
-                        ['Off', '1 minute', '3 minutes', '5 minutes'], (value) {
-                      setState(() => _autoPowerOff = value!);
-                    }),
 
                     const SizedBox(height: 24),
 
@@ -334,48 +248,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
           ),
           const Divider(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSwitchSetting(
-      String label, bool value, ValueChanged<bool> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDropdownSetting(String label, String value, List<String> options,
-      ValueChanged<String?> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label),
-          ),
-          DropdownButton<String>(
-            value: value,
-            items: options.map((String option) {
-              return DropdownMenuItem<String>(
-                value: option,
-                child: Text(option),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
         ],
       ),
     );
