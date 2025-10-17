@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants.dart';
 import '../../services/app_state.dart';
-import '../widgets/settings_dialog.dart';
 import '../widgets/mobile_video_grid.dart';
 import '../widgets/mobile_download_queue.dart';
 import '../widgets/mobile_settings_tab.dart';
