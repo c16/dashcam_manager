@@ -6,6 +6,74 @@ This project builds a dashcam video management application. Start with Linux des
 
 ---
 
+## Development Workflow (IMPORTANT)
+
+### Branch Management
+**Always create a new branch for new features or significant changes.**
+
+```bash
+# Create and switch to a new feature branch
+git checkout -b feature/your-feature-name
+
+# Work on your changes...
+
+# When ready to merge
+git checkout master
+git merge feature/your-feature-name
+```
+
+Never commit directly to master for new features. Only use master for:
+- Bug fixes that affect production builds
+- Documentation updates
+- Minor tweaks
+
+### Pre-Push Build Verification
+**Before pushing to GitHub, verify all applications build successfully.**
+
+Use git worktrees to test builds in isolation without affecting your working directory:
+
+```bash
+# Create a worktree from current branch for testing
+git worktree add ../dashcam-test-build
+
+# Navigate to the worktree
+cd ../dashcam-test-build
+
+# Test Python application
+cd dashcam_python
+pip install -r requirements.txt
+python3 src/ui/main_window.py --help  # Quick validation
+
+# Test Flutter builds
+cd ../dashcam_flutter
+./buildall.sh  # Builds both Linux and Android
+
+# If all builds pass, return to main directory
+cd ../../dashcam
+
+# Clean up the worktree
+git worktree remove ../dashcam-test-build
+
+# Now safe to push
+git push origin your-branch-name
+```
+
+**Why use worktrees?**
+- Isolated testing environment
+- Doesn't affect your working directory
+- Can test multiple branches simultaneously
+- Catches missing files before they reach GitHub
+- Ensures fresh clones will build successfully
+
+**Build verification checklist:**
+- [ ] Python app runs without import errors
+- [ ] Flutter Linux builds successfully
+- [ ] Flutter Android APK builds successfully
+- [ ] All source files are tracked in git
+- [ ] No build artifacts committed
+
+---
+
 ## Project Context
 
 **What we have**:
