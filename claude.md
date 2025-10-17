@@ -9,10 +9,10 @@ This project builds a dashcam video management application. Start with Linux des
 ## Development Workflow (IMPORTANT)
 
 ### Branch Management
-**Always create a new branch for new features or significant changes.**
+**CRITICAL: ALWAYS create a new branch BEFORE starting ANY work.**
 
 ```bash
-# Create and switch to a new feature branch
+# FIRST: Create and switch to a new feature branch
 git checkout -b feature/your-feature-name
 
 # Work on your changes...
@@ -20,12 +20,34 @@ git checkout -b feature/your-feature-name
 # When ready to merge
 git checkout master
 git merge feature/your-feature-name
+git branch -d feature/your-feature-name  # Clean up
+git push origin master
 ```
 
-Never commit directly to master for new features. Only use master for:
-- Bug fixes that affect production builds
-- Documentation updates
-- Minor tweaks
+**NEVER commit directly to master. EVER.**
+
+This includes:
+- ❌ New features
+- ❌ Dependency updates
+- ❌ Bug fixes
+- ❌ Refactoring
+- ❌ Code cleanup
+- ❌ ANY code changes
+
+**Only exception:** Documentation-only changes (README, comments, markdown files with no code impact)
+
+**Why this is critical:**
+- Allows testing in isolation
+- Easy to revert if something breaks
+- Clean git history
+- Follows professional workflow
+- Makes code review possible
+
+**If you forget and commit to master:**
+1. Stop immediately
+2. Create a branch from current commit
+3. Reset master to previous state
+4. Merge the branch properly
 
 ### Pre-Push Build Verification
 **Before pushing to GitHub, verify all applications build successfully.**
